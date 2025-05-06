@@ -71,6 +71,7 @@ Ce projet est une application de microservices permettant de gérer des publicat
 ### **Prérequis :**
 
 - Node.js installé sur votre machine.
+- MongoDB installé et en cours d'exécution.
 - Redis installé et en cours d'exécution.
 
 ### **Étapes pour lancer les services :**
