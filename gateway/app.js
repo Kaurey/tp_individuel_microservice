@@ -18,7 +18,6 @@ const serviceMap = {
 app.use("/api/:service", (req, res, next) => {
     const serviceName = req.params.service;
     const target = serviceMap[serviceName];
-    console.log(serviceName, target);
 
     if (target) {
         createProxyMiddleware({

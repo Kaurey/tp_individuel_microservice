@@ -1,16 +1,21 @@
 const Publication = require('../models/publicationModel');
+const redisClient = require('../config/redis');
 
 // Créer une publication
 const createPublication = async (req, res) => {
-    const { title, content } = req.body; // Suppression de l'author du body
+    const { title, content } = req.body;
 
     try {
         const newPublication = new Publication({
             title,
             content,
-            author: req.user.id // Utilisation de l'ID utilisateur extrait du token
+            author: req.user.id, // Utilisation de l'ID utilisateur extrait du token
         });
         await newPublication.save();
+
+        // Invalide le cache des publications
+        await redisClient.del('publications');
+
         res.status(201).json(newPublication);
     } catch (error) {
         res.status(500).json({ message: 'Erreur lors de la création de la publication', error });
@@ -20,7 +25,18 @@ const createPublication = async (req, res) => {
 // Récupérer toutes les publications
 const getPublications = async (req, res) => {
     try {
+        // Vérifie si les publications sont en cache
+        const cachedPublications = await redisClient.get('publications');
+        if (cachedPublications) {
+            return res.status(200).json(JSON.parse(cachedPublications)); // Retourne les publications depuis Redis
+        }
+
+        // Si non en cache, récupère depuis MongoDB
         const publications = await Publication.find();
+        await redisClient.set('publications', JSON.stringify(publications), {
+            EX: 300, // Expiration du cache après 5 minutes
+        });
+
         res.status(200).json(publications);
     } catch (error) {
         res.status(500).json({ message: 'Erreur lors de la récupération des publications', error });
@@ -56,6 +72,10 @@ const updatePublication = async (req, res) => {
         if (!updatedPublication) {
             return res.status(404).json({ message: 'Publication non trouvée' });
         }
+
+        // Invalide le cache des publications
+        await redisClient.del('publications');
+
         res.status(200).json(updatedPublication);
     } catch (error) {
         res.status(500).json({ message: 'Erreur lors de la mise à jour de la publication', error });
@@ -71,6 +91,10 @@ const deletePublication = async (req, res) => {
         if (!deletedPublication) {
             return res.status(404).json({ message: 'Publication non trouvée' });
         }
+
+        // Invalide le cache des publications
+        await redisClient.del('publications');
+
         res.status(200).json({ message: 'Publication supprimée avec succès' });
     } catch (error) {
         res.status(500).json({ message: 'Erreur lors de la suppression de la publication', error });
@@ -82,5 +106,5 @@ module.exports = {
     getPublications,
     getPublicationById,
     updatePublication,
-    deletePublication
+    deletePublication,
 };
